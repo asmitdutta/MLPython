@@ -4,6 +4,32 @@ import nltk
 import random
 from nltk.corpus import movie_reviews
 import pickle
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.svm import SVC
+from nltk.classify import ClassifierI
+from nltk.classify.scikitlearn import SklearnClassifier
+from scipy.stats import mode
+
+class VoteClassifier(ClassifierI):
+    def __init__(self, *classifiers):
+        self._classifiers = classifiers
+
+    def classify(self, features):
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+        print mode(votes)
+        return mode(votes)
+
+    def confidence(self, features):
+        votes = []
+        for c in self._classifiers:
+            v = c.classify(features)
+            votes.append(v)
+        choice_votes = votes.count(mode(votes))
+        conf = choice_votes/len(votes)
+        return conf
 
 documents = [(list(movie_reviews.words(fileid)),category)
              for category in movie_reviews.categories()
@@ -47,3 +73,10 @@ save_classifier = open("naivebayes.pickle","wb")
 pickle.dump(classifier, save_classifier)
 save_classifier.close()
 
+logistic_regression_classifier = SklearnClassifier(LogisticRegression())
+logistic_regression_classifier.train(training_set)
+print("logistic regression accuracy:", nltk.classify.accuracy(logistic_regression_classifier, testing_set))
+
+voted_classifier = VoteClassifier(classifier, logistic_regression_classifier)
+print("voted_classifier accuracy percent:",nltk.classify.accuracy(voted_classifier, testing_set)*100)
+print("Classification:", voted_classifier.classify(testing_set[0][0]), "Confidence %:", voted_classifier.confidence(testing_set[0][0]))
